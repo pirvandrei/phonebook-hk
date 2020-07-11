@@ -3,9 +3,11 @@ const { response } = require('express');
 var morgan = require('morgan')
 var fs = require('fs')
 var path = require('path')
-
+const cors = require('cors')
 const app = express()
 
+app.use(cors())
+app.use(express.static('build'))
 app.use(express.json())
 
 const unknownEndpoint = (request, response) => {
@@ -24,18 +26,18 @@ app.use(morgan(':method :url :status(:response-time ms) :body - :date '))
 let persons = [
     {
       id: 1,
-      number: "0045 81 29 2018",
+      number: "81 29 2018",
       name: "Andrei Pirvan",
     },
     {
       id: 2,
-      number: "0045 60 88 44 88",
+      number: "60 88 44 88",
       name: "Andreea Pirvan",
     },
     {
       id: 3,
-      number: "0045 71 13 12 34",
-      important: "Elena Pirvan",
+      number: "71 13 12 34",
+      name: "Elena Pirvan",
     },
   ];
 
