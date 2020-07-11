@@ -19,7 +19,7 @@ morgan.token('body', function getBody (req) {
   return JSON.stringify(req.body)
 })
 
-app.use(morgan(':method :url :status(:response-time ms) :body - :date ', { stream: accessLogStream }))
+app.use(morgan(':method :url :status(:response-time ms) :body - :date '))
 
 let persons = [
     {
