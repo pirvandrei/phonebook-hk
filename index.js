@@ -8,7 +8,6 @@ const cors = require("cors");
 const app = express();
 const mongoose = require("mongoose");
 const Person = require("./models/person");
-const note = require("../todo-hk/models/note");
 
 mongoose.set("useFindAndModify", false);
 app.use(cors());
