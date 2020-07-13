@@ -1,117 +1,122 @@
-const express = require('express');
-const { response } = require('express');
-var morgan = require('morgan')
-var fs = require('fs')
-var path = require('path')
-const cors = require('cors')
-const app = express()
+require("dotenv").config();
+const express = require("express");
+const { response } = require("express");
+var morgan = require("morgan");
+var fs = require("fs");
+var path = require("path");
+const cors = require("cors");
+const app = express();
+const mongoose = require("mongoose");
+const Person = require("./models/person");
+const note = require("../todo-hk/models/note");
 
-app.use(cors())
-app.use(express.static('build'))
-app.use(express.json())
-
-const unknownEndpoint = (request, response) => {
-  response.status(404).send({ error: 'unknown endpoint' })
-}
+mongoose.set("useFindAndModify", false);
+app.use(cors());
+app.use(express.static("build"));
+app.use(express.json());
 
 // create a write stream (in append mode)
-var accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' })
+var accessLogStream = fs.createWriteStream(path.join(__dirname, "access.log"), {
+  flags: "a",
+});
 
-morgan.token('body', function getBody (req) {
-  return JSON.stringify(req.body)
-})
+morgan.token("body", function getBody(req) {
+  return JSON.stringify(req.body);
+});
 
-app.use(morgan(':method :url :status(:response-time ms) :body - :date '))
+app.use(morgan(":method :url :status(:response-time ms) :body - :date "));
 
-let persons = [
-    {
-      id: 1,
-      number: "81 29 2018",
-      name: "Andrei Pirvan",
-    },
-    {
-      id: 2,
-      number: "60 88 44 88",
-      name: "Andreea Pirvan",
-    },
-    {
-      id: 3,
-      number: "71 13 12 34",
-      name: "Elena Pirvan",
-    },
-  ];
+app.get("/info", (req, res) => {
+  
+const number =  Person.estimatedDocumentCount((error, count) => {
+  console.log(count)
+  const message = `<p>The phone book has info for ${count} people</p>
+    <p>${new Date()}</p>`;
+  
+  res.send(message);
+});
 
-app.get('/info', (req, res) => {
-    const message = `<p>The phonebook has info for ${persons.length} people</p>
-    <p>${new Date()}</p>`
+});
 
-    res.send(message)
-})
+app.get("/api/persons", (req, res) => {
+  Person.find({})
+    .then((notes) => {
+      res.json(notes);
+    })
+    .catch((error) => {
+      console.log("error connecting to MongoDB: ", error.message);
+      res.status(404).end();
+    });
+});
 
-app.get('/api/persons', (req, res) => {
-   res.json(persons)
-})
+app.get("/api/persons/:id", (request, response, next) => {
+  Person.findById(request.params.id)
+    .then((person) => {
+      if (person) {
+        response.json(person);
+      } else {
+        response.status(404).end();
+      }
+    })
+    .catch((error) => next(error));
+});
 
-app.get('/api/persons/:id', (req, res) => { 
-    const id = Number(req.params.id)
+app.delete("/api/persons/:id", (request, response, next) => {
+  note
+    .findByIdAndDelete(request.params.id)
+    .then((result) => {
+      response.status(204).end();
+    })
+    .catch((error) => next(error));
+});
 
-    const maxId = Math.max(...persons.map(x => x.id)) 
-    if(id > maxId || id < 0) 
-    {
-      return res.status(404).json({error: 'resource not found'})
-    }
-    
-    const result = persons.find(x => x.id === id)
-    res.json(result)
-})
+app.post("/api/persons", (req, response) => {
+  const body = req.body;
 
-app.delete('/api/persons/:id', (req, res) => {
-  const id = Number(req.params.id)
-
-  const maxId = Math.max(...persons.map(x => x.id))
-  if(id > maxId || id <= 0)
-  {
-    return res.status(404).json({error: 'resource not found'})
+  if (!body.name || !body.number ) {
+    return response.status(404).json({ error: "missing name or number" });
   }
 
-  persons = persons.filter( x => x.id !== id)
+  const person = new Person({
+    name: body.name,
+    number: body.number,
+  });
 
-  res.status(204).end()
-})
+  person.save().then((savedNote) => {
+    response.json(savedNote);
+  });
+});
 
-const generateId = () => {
-  const maxId = persons.length > 0 ? 
-    Math.max(...persons.map(x => x.id)) 
-    : 0
+app.put("/api/persons/:id", (request, response, next) => {
+  const body = request.body;
 
-  return maxId + 1
-} 
+  const person = {
+    name: body.name,
+    number: body.number,
+  };
 
-app.post('/api/persons', (req, res) => {
-    const body = req.body
-    
-    if(!body.name || !body.number)
-    {
-      return res.status(404).json({error: 'missing name or number'}) 
-    }
+  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+    .then((updatedNote) => response.json(updatedNote))
+    .catch((error) => next(error));
+});
 
-    var existing = persons.find( x => x.name === body.name)
-    if(existing)
-    {
-      return res.status(404).json({error: 'name must be unique'})
-    }
-    const person = {
-      name:  body.name,
-      number: body.number,
-      id: generateId(),
-    }
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: "unknown endpoint" });
+};
 
-    persons = persons.concat(person)
+app.use(unknownEndpoint);
 
-    res.json(person)
-})
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message);
 
-app.use(unknownEndpoint)
+  if (error.name == "CastError") {
+    return response.status(400).send({ error: "malformed id" });
+  }
+
+  next(error);
+};
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`The app is listening on port : ${PORT}`))
+app.listen(PORT, () => console.log(`The app is listening on port : ${PORT}`));
