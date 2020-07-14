@@ -39,8 +39,8 @@ const number =  Person.estimatedDocumentCount((error, count) => {
 
 app.get("/api/persons", (req, res) => {
   Person.find({})
-    .then((notes) => {
-      res.json(notes);
+    .then((people) => {
+      res.json(people);
     })
     .catch((error) => {
       console.log("error connecting to MongoDB: ", error.message);
@@ -61,7 +61,7 @@ app.get("/api/persons/:id", (request, response, next) => {
 });
 
 app.delete("/api/persons/:id", (request, response, next) => {
-  note
+  Person
     .findByIdAndDelete(request.params.id)
     .then((result) => {
       response.status(204).end();
@@ -69,7 +69,7 @@ app.delete("/api/persons/:id", (request, response, next) => {
     .catch((error) => next(error));
 });
 
-app.post("/api/persons", (req, response) => {
+app.post("/api/persons", (req, response, next) => {
   const body = req.body;
 
   if (!body.name || !body.number ) {
@@ -81,9 +81,13 @@ app.post("/api/persons", (req, response) => {
     number: body.number,
   });
 
-  person.save().then((savedNote) => {
-    response.json(savedNote);
-  });
+  person.save().then((savedPerson) => {
+    return savedPerson.toJSON();  
+  })
+  .then( savedAndFormattedPerson => {
+    response.json(savedAndFormattedPerson)
+  } )
+  .catch( error => next(error));
 });
 
 app.put("/api/persons/:id", (request, response, next) => {
@@ -110,6 +114,8 @@ const errorHandler = (error, request, response, next) => {
 
   if (error.name == "CastError") {
     return response.status(400).send({ error: "malformed id" });
+  }else if ( error.name == 'ValidationError') {
+    return response.status(404).send({ error: error.message})
   }
 
   next(error);

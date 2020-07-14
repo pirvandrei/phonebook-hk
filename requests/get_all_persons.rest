@@ -12,8 +12,9 @@ DELETE http://localhost:3001/api/persons/5f0c760a4e307f6e74ef2437
 ### 
 POST http://localhost:3001/api/persons  
 content-type: application/json
+
 {
-    "name" : "Gica",
+    "name" : "Gi",
     "number" : "0042 84 84 48 75"
 }
 ###
