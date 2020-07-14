@@ -1,54 +1,44 @@
-require("dotenv").config();
-const express = require("express");
-const { response } = require("express");
-var morgan = require("morgan");
-var fs = require("fs");
-var path = require("path");
-const cors = require("cors");
+require('dotenv').config();
+const express = require('express');
+var morgan = require('morgan');
+const cors = require('cors');
 const app = express();
-const mongoose = require("mongoose");
-const Person = require("./models/person");
+const mongoose = require('mongoose');
+const Person = require('./models/person');
 
-mongoose.set("useFindAndModify", false);
+mongoose.set('useFindAndModify', false);
 app.use(cors());
-app.use(express.static("build"));
+app.use(express.static('build'));
 app.use(express.json());
 
-// create a write stream (in append mode)
-var accessLogStream = fs.createWriteStream(path.join(__dirname, "access.log"), {
-  flags: "a",
-});
-
-morgan.token("body", function getBody(req) {
+morgan.token('body', function getBody(req) {
   return JSON.stringify(req.body);
 });
 
-app.use(morgan(":method :url :status(:response-time ms) :body - :date "));
+app.use(morgan(':method :url :status(:response-time ms) :body - :date '));
 
-app.get("/info", (req, res) => {
-  
-const number =  Person.estimatedDocumentCount((error, count) => {
-  console.log(count)
-  const message = `<p>The phone book has info for ${count} people</p>
+app.get('/info', (req, res) => {
+  Person.estimatedDocumentCount((error, count) => {
+    console.log(count);
+    const message = `<p>The phone book has info for ${count} people</p>
     <p>${new Date()}</p>`;
   
-  res.send(message);
+    res.send(message);
+  });
 });
 
-});
-
-app.get("/api/persons", (req, res) => {
+app.get('/api/persons', (req, res) => {
   Person.find({})
     .then((people) => {
       res.json(people);
     })
     .catch((error) => {
-      console.log("error connecting to MongoDB: ", error.message);
+      console.log('error connecting to MongoDB: ', error.message);
       res.status(404).end();
     });
 });
 
-app.get("/api/persons/:id", (request, response, next) => {
+app.get('/api/persons/:id', (request, response, next) => {
   Person.findById(request.params.id)
     .then((person) => {
       if (person) {
@@ -60,20 +50,20 @@ app.get("/api/persons/:id", (request, response, next) => {
     .catch((error) => next(error));
 });
 
-app.delete("/api/persons/:id", (request, response, next) => {
+app.delete('/api/persons/:id', (request, response, next) => {
   Person
     .findByIdAndDelete(request.params.id)
-    .then((result) => {
+    .then(() => {
       response.status(204).end();
     })
     .catch((error) => next(error));
 });
 
-app.post("/api/persons", (req, response, next) => {
+app.post('/api/persons', (req, response, next) => {
   const body = req.body;
 
   if (!body.name || !body.number ) {
-    return response.status(404).json({ error: "missing name or number" });
+    return response.status(404).json({ error: 'missing name or number' });
   }
 
   const person = new Person({
@@ -84,13 +74,13 @@ app.post("/api/persons", (req, response, next) => {
   person.save().then((savedPerson) => {
     return savedPerson.toJSON();  
   })
-  .then( savedAndFormattedPerson => {
-    response.json(savedAndFormattedPerson)
-  } )
-  .catch( error => next(error));
+    .then( savedAndFormattedPerson => {
+      response.json(savedAndFormattedPerson);
+    } )
+    .catch( error => next(error));
 });
 
-app.put("/api/persons/:id", (request, response, next) => {
+app.put('/api/persons/:id', (request, response, next) => {
   const body = request.body;
 
   const person = {
@@ -104,7 +94,7 @@ app.put("/api/persons/:id", (request, response, next) => {
 });
 
 const unknownEndpoint = (request, response) => {
-  response.status(404).send({ error: "unknown endpoint" });
+  response.status(404).send({ error: 'unknown endpoint' });
 };
 
 app.use(unknownEndpoint);
@@ -112,10 +102,10 @@ app.use(unknownEndpoint);
 const errorHandler = (error, request, response, next) => {
   console.error(error.message);
 
-  if (error.name == "CastError") {
-    return response.status(400).send({ error: "malformed id" });
+  if (error.name == 'CastError') {
+    return response.status(400).send({ error: 'malformed id' });
   }else if ( error.name == 'ValidationError') {
-    return response.status(404).send({ error: error.message})
+    return response.status(404).send({ error: error.message});
   }
 
   next(error);
